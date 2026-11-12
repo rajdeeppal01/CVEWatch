@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CVEWatch — Live Vulnerability Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">⬡ CVEWatch</span>
+      <span class="tagline">Live CVE Intelligence Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <div class="live-indicator" id="liveIndicator">
+        <span class="pulse-dot"></span> LIVE
+      </div>
+      <div class="last-updated" id="lastUpdated">Connecting...</div>
+      <button class="btn-refresh" id="btnRefresh" onclick="triggerRefresh()">
+        ↻ Refresh Now
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Stats Bar ─────────────────────────────────────────────── -->
+  <section class="stats-bar">
+    <div class="stat-card critical">
+      <div class="stat-label">CRITICAL</div>
+      <div class="stat-value" id="statCritical">—</div>
+    </div>
+    <div class="stat-card high">
+      <div class="stat-label">HIGH</div>
+      <div class="stat-value" id="statHigh">—</div>
+    </div>
+    <div class="stat-card medium">
+      <div class="stat-label">MEDIUM</div>
+      <div class="stat-value" id="statMedium">—</div>
+    </div>
+    <div class="stat-card low">
+      <div class="stat-label">LOW</div>
+      <div class="stat-value" id="statLow">—</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-label">TOTAL CVEs</div>
+      <div class="stat-value" id="statTotal">—</div>
+    </div>
+    <div class="stat-card patched">
+      <div class="stat-label">PATCH AVAILABLE</div>
+      <div class="stat-value" id="statPatched">—</div>
+    </div>
+  </section>
+
+  <!-- ── Controls ──────────────────────────────────────────────── -->
+  <section class="controls">
+    <div class="filter-group">
+      <label>Severity</label>
+      <select id="filterSeverity" onchange="loadCVEs()">
+        <option value="ALL">All Severities</option>
+        <option value="CRITICAL">Critical</option>
+        <option value="HIGH">High</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="LOW">Low</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Sort By</label>
+      <select id="filterSort" onchange="loadCVEs()">
+        <option value="published">Published Date</option>
+        <option value="cvss_score">CVSS Score</option>
+      </select>
+    </div>
+    <div class="filter-group search-group">
+      <label>Search</label>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="CVE ID, vendor, product, keyword..."
+        oninput="debounceSearch()"
+      />
+    </div>
+    <div class="filter-group">
+      <label>Per Page</label>
+      <select id="filterLimit" onchange="loadCVEs()">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- ── CVE Table ─────────────────────────────────────────────── -->
+  <section class="table-section">
+    <div class="table-header">
+      <span id="tableCount">Loading CVEs...</span>
+      <div class="pagination">
+        <button class="btn-page" id="btnPrev" onclick="prevPage()" disabled>← Prev</button>
+        <span id="pageInfo">Page 1</span>
+        <button class="btn-page" id="btnNext" onclick="nextPage()">Next →</button>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table id="cveTable">
+        <thead>
+          <tr>
+            <th>CVE ID</th>
+            <th>Severity</th>
+            <th>CVSS</th>
+            <th>Vendor / Product</th>
+            <th>Published</th>
+            <th>Patch</th>
+            <th>Summary</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="cveTableBody">
+          <tr><td colspan="8" class="loading-row">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Detail Modal ──────────────────────────────────────────── -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+
+      <div class="modal-header">
+        <span class="modal-cve-id" id="modalCveId">CVE-XXXX-XXXXX</span>
+        <span class="modal-severity badge" id="modalSeverity">HIGH</span>
+        <span class="modal-score" id="modalScore">—</span>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-section">
+          <h3>Description</h3>
+          <p id="modalDescription"></p>
+        </div>
+
+        <div class="modal-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Vendor</span>
+            <span class="meta-value" id="modalVendor">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Product</span>
+            <span class="meta-value" id="modalProduct">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Affected Versions</span>
+            <span class="meta-value" id="modalVersions">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">CWE</span>
+            <span class="meta-value" id="modalCwe">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Published</span>
+            <span class="meta-value" id="modalPublished">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Last Modified</span>
+            <span class="meta-value" id="modalModified">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">CVSS Vector</span>
+            <span class="meta-value mono" id="modalVector">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Patch Available</span>
+            <span class="meta-value" id="modalPatch">—</span>
+          </div>
+        </div>
+
+        <div class="modal-section remediation-section">
+          <h3>🛡️ Remediation Steps</h3>
+          <div id="modalRemediation" class="remediation-box"></div>
+        </div>
+
+        <div class="modal-section">
+          <h3>References</h3>
+          <div id="modalRefs" class="refs-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast Notifications ───────────────────────────────────── -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
