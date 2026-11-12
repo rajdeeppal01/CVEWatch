@@ -319,3 +319,304 @@ function formatDate(iso) {
     return iso;
   }
 }
+
+
+// ── Tab Switching ────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+
+  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add("active");
+  document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add("active");
+
+  if (tab === "android") {
+    detectDevice();
+    loadScanHistory();
+  }
+}
+
+// ── Android Scanner State ────────────────────────────────────────
+let currentScanReport = null;
+let allVulnerabilities = [];
+
+// ── Detect Device ────────────────────────────────────────────────
+async function detectDevice() {
+  const btn = document.getElementById("btnDetect");
+  btn.disabled = true;
+  btn.textContent = "🔍 Detecting...";
+
+  try {
+    const res = await fetch(`${API}/api/android/status`);
+    const data = await res.json();
+
+    document.getElementById("adbInstructions").style.display = "none";
+
+    if (!data.adb_available) {
+      setDeviceStatus("error", "ADB Not Found");
+      document.getElementById("deviceName").textContent = "ADB not installed";
+      document.getElementById("deviceMeta").textContent = data.error;
+      document.getElementById("adbInstructions").style.display = "block";
+      document.getElementById("btnScan").disabled = true;
+      return;
+    }
+
+    const online = data.devices.filter(d => d.state === "device");
+
+    if (online.length === 0) {
+      setDeviceStatus("waiting", "No Device");
+      document.getElementById("deviceName").textContent = "No device connected";
+      document.getElementById("deviceMeta").textContent =
+        "Connect your Android phone via USB with USB Debugging enabled, then click Detect again.";
+      document.getElementById("btnScan").disabled = true;
+      return;
+    }
+
+    const dev = online[0];
+    setDeviceStatus("connected", "Connected");
+    document.getElementById("deviceName").textContent =
+      dev.model || dev.serial;
+    document.getElementById("deviceMeta").textContent =
+      `Serial: ${dev.serial}` + (online.length > 1 ? ` (+${online.length - 1} more)` : "");
+    document.getElementById("btnScan").disabled = false;
+
+    showToast(`Device detected: ${dev.model || dev.serial}`, "success");
+
+  } catch (e) {
+    setDeviceStatus("error", "Error");
+    document.getElementById("deviceName").textContent = "Detection failed";
+    document.getElementById("deviceMeta").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔍 Detect Device";
+  }
+}
+
+function setDeviceStatus(type, text) {
+  const pill = document.getElementById("deviceStatusPill");
+  pill.className = `device-status-pill ${type}`;
+  document.getElementById("deviceStatusText").textContent = text;
+}
+
+// ── Start Scan ───────────────────────────────────────────────────
+async function startScan() {
+  const btnScan = document.getElementById("btnScan");
+  btnScan.disabled = true;
+
+  // Hide results, show progress
+  document.getElementById("scanResults").style.display  = "none";
+  document.getElementById("scanHistory").style.display  = "none";
+  document.getElementById("scanProgress").style.display = "block";
+
+  setDeviceStatus("scanning", "Scanning...");
+  setProgressStep(1);
+
+  // Animate steps while waiting (the scan can take 30–60s)
+  const stepTimers = [
+    setTimeout(() => setProgressStep(2), 3000),
+    setTimeout(() => setProgressStep(3), 8000),
+    setTimeout(() => setProgressStep(4), 15000),
+  ];
+
+  try {
+    const res = await fetch(`${API}/api/android/scan`, { method: "POST" });
+    stepTimers.forEach(t => clearTimeout(t));
+    setProgressStep(4, true); // mark all done
+
+    const report = await res.json();
+    document.getElementById("scanProgress").style.display = "none";
+
+    if (report.status !== "ok") {
+      setDeviceStatus("error", "Failed");
+      showToast(`Scan failed: ${report.error}`, "error");
+
+      // If multiple devices, show selection
+      if (report.status === "multiple_devices") {
+        showToast("Multiple devices connected — only one at a time is supported currently.", "warning");
+      }
+      btnScan.disabled = false;
+      return;
+    }
+
+    currentScanReport = report;
+    allVulnerabilities = report.vulnerabilities || [];
+    renderScanReport(report);
+    setDeviceStatus("done", "Scan Complete");
+    showToast(`Scan complete: ${report.total_vulnerabilities} vulnerabilities found`, "success");
+
+  } catch (e) {
+    stepTimers.forEach(t => clearTimeout(t));
+    document.getElementById("scanProgress").style.display = "none";
+    setDeviceStatus("error", "Error");
+    showToast(`Scan error: ${e.message}`, "error");
+  } finally {
+    btnScan.disabled = false;
+  }
+}
+
+function setProgressStep(step, allDone = false) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step${i}`);
+    if (!el) continue;
+    el.classList.remove("active", "done");
+    if (allDone || i < step) {
+      el.classList.add("done");
+    } else if (i === step) {
+      el.classList.add("active");
+    }
+  }
+}
+
+// ── Render Scan Report ───────────────────────────────────────────
+function renderScanReport(report) {
+  const dev = report.device || {};
+  const sum = report.severity_summary || {};
+
+  document.getElementById("reportDeviceName").textContent =
+    `${dev.manufacturer || ""} ${dev.model || ""}`.trim() || "Unknown Device";
+
+  document.getElementById("reportDeviceDetails").textContent =
+    [
+      dev.android_version ? `Android ${dev.android_version}` : null,
+      dev.sdk_version     ? `SDK ${dev.sdk_version}` : null,
+      dev.security_patch  ? `Patch: ${dev.security_patch}` : null,
+      dev.cpu_abi         ? dev.cpu_abi : null,
+      dev.build_id        ? `Build ${dev.build_id}` : null,
+    ].filter(Boolean).join("  •  ");
+
+  document.getElementById("reportScanTime").textContent =
+    `Scanned: ${new Date(report.scan_time).toLocaleString()}`;
+  document.getElementById("reportPackages").textContent =
+    `${report.packages_scanned.toLocaleString()} packages scanned`;
+
+  document.getElementById("rCritical").textContent = sum.CRITICAL || 0;
+  document.getElementById("rHigh").textContent     = sum.HIGH     || 0;
+  document.getElementById("rMedium").textContent   = sum.MEDIUM   || 0;
+  document.getElementById("rLow").textContent      = sum.LOW      || 0;
+  document.getElementById("rTotal").textContent    = report.total_vulnerabilities || 0;
+
+  // Build category pills
+  const categories = [...new Set(allVulnerabilities.map(v => v.match_category).filter(Boolean))];
+  const pillsEl = document.getElementById("categoryPills");
+  pillsEl.innerHTML = categories.map(cat =>
+    `<button class="cat-pill" onclick="filterByCategory('${cat}')">${catLabel(cat)}</button>`
+  ).join("");
+
+  renderReportTable(allVulnerabilities);
+
+  document.getElementById("scanResults").style.display = "flex";
+  loadScanHistory();
+}
+
+function catLabel(cat) {
+  return { os: "🤖 Android OS", kernel: "🐧 Kernel", manufacturer: "🏭 Manufacturer", package: "📦 Apps" }[cat] || cat;
+}
+
+function renderReportTable(vulns) {
+  const tbody = document.getElementById("reportTableBody");
+  if (!vulns.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="loading-row" style="color:var(--low)">
+      ✅ No vulnerabilities found for this filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = vulns.map(cve => {
+    const scoreClass = cvssClass(cve.cvss_score);
+    const severity   = cve.severity || "UNKNOWN";
+    const badgeLabel = severity === "UNKNOWN" ? "PENDING" : severity;
+    const summary    = truncate(cve.description, 80);
+    const cat        = cve.match_category || "os";
+
+    return `
+      <tr onclick="openModal('${escHtml(cve.cve_id)}')">
+        <td class="cve-id-cell">${escHtml(cve.cve_id)}</td>
+        <td><span class="badge badge-${severity}">${badgeLabel}</span></td>
+        <td class="cvss-score ${scoreClass}">${cve.cvss_score ?? '—'}</td>
+        <td><span class="match-category match-${cat}">${catLabel(cat)}</span></td>
+        <td class="summary-cell" title="${escHtml(cve.description)}">${escHtml(summary)}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn-detail" onclick="openModal('${escHtml(cve.cve_id)}')">Details</button>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function filterReport() {
+  const val = document.getElementById("reportSeverityFilter").value;
+  let filtered = allVulnerabilities;
+
+  // Category filters
+  const catFilters = ["os", "kernel", "manufacturer", "package"];
+  if (catFilters.includes(val)) {
+    filtered = filtered.filter(v => v.match_category === val);
+  } else if (val !== "ALL") {
+    filtered = filtered.filter(v => (v.severity || "UNKNOWN") === val);
+  }
+
+  renderReportTable(filtered);
+}
+
+function filterByCategory(cat) {
+  document.querySelectorAll(".cat-pill").forEach(p => {
+    p.classList.toggle("active", p.textContent === catLabel(cat) || p.onclick?.toString().includes(`'${cat}'`));
+  });
+  const filtered = allVulnerabilities.filter(v => v.match_category === cat);
+  renderReportTable(filtered);
+}
+
+// ── Scan History ─────────────────────────────────────────────────
+async function loadScanHistory() {
+  try {
+    const res = await fetch(`${API}/api/android/history`);
+    const data = await res.json();
+    const scans = data.scans || [];
+
+    const histEl = document.getElementById("scanHistory");
+    const listEl = document.getElementById("scanHistoryList");
+
+    if (!scans.length) {
+      histEl.style.display = "none";
+      return;
+    }
+
+    listEl.innerHTML = scans.map(s => `
+      <div class="history-item">
+        <div class="history-device">📱 ${s.manufacturer || ""} ${s.model || "Unknown"}
+          <span class="history-android"> Android ${s.android_version || "?"}</span>
+        </div>
+        <div class="history-patch">Patch: ${s.security_patch || "unknown"}</div>
+        <div class="history-vulns">
+          ${s.critical_count ? `<span class="history-vuln-pill hv-critical">C: ${s.critical_count}</span>` : ""}
+          ${s.high_count ? `<span class="history-vuln-pill hv-high">H: ${s.high_count}</span>` : ""}
+          <span style="font-size:12px;color:var(--text-muted)">${s.total_vulns} total</span>
+        </div>
+        <div class="history-time">${new Date(s.scan_time).toLocaleString()}</div>
+      </div>
+    `).join("");
+
+    histEl.style.display = "block";
+  } catch (e) {
+    // history is non-critical, fail silently
+  }
+}
+
+// Listen for android scan complete SSE events
+const _origConnectSSE = connectSSE;
+// Extend SSE handler for android events (patch into the existing source)
+const _origSSEConnect = connectSSE;
+document.addEventListener("DOMContentLoaded", () => {
+  // Extend existing SSE with android_scan_complete handler
+  const origConnect = window.connectSSE;
+  window.connectSSE = function() {
+    origConnect && origConnect();
+    if (window.sseSource) {
+      window.sseSource.addEventListener("android_scan_complete", (e) => {
+        const d = JSON.parse(e.data);
+        showToast(
+          `📱 Scan done: ${d.device} — ${d.total_vulns} CVEs (${d.critical} critical)`,
+          d.critical > 0 ? "error" : "success",
+          6000
+        );
+      });
+    }
+  };
+});
