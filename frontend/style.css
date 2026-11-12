@@ -553,8 +553,8 @@ tbody td {
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ── Tab Panels ─────────────────────────────────────────────────── */
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.tab-panel { display: none !important; }
+.tab-panel.active { display: block !important; }
 
 /* ── Android Status Bar ──────────────────────────────────────────── */
 .android-status-bar {

@@ -326,12 +326,19 @@ function switchTab(tab) {
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
 
-  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add("active");
-  document.getElementById(`panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add("active");
+  const tabId   = `tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+  const panelId = `panel${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+  document.getElementById(tabId).classList.add("active");
+  document.getElementById(panelId).classList.add("active");
 
+  // Android tab: auto-detect on first open, load history
   if (tab === "android") {
     detectDevice();
     loadScanHistory();
+  }
+  // CVE tab: re-render stats in case they updated while on Android tab
+  if (tab === "cve") {
+    loadStats();
   }
 }
 
