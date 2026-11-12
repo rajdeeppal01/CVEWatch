@@ -21,7 +21,7 @@ async def init_db():
                 cvss_score  REAL,
                 cvss_vector TEXT,
                 description TEXT,
-                references  TEXT,
+                "references" TEXT,
                 remediation TEXT,
                 cwe         TEXT,
                 vendor      TEXT,
@@ -53,7 +53,7 @@ async def upsert_cve(db, cve: dict):
         await db.execute("""
             INSERT INTO cves
                 (cve_id, published, modified, severity, cvss_score, cvss_vector,
-                 description, references, remediation, cwe, vendor, product,
+                 description, "references", remediation, cwe, vendor, product,
                  affected_versions, patch_available, source)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
