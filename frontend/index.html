@@ -25,6 +25,15 @@
     </div>
   </header>
 
+  <!-- ── Tab Navigation ────────────────────────────────────────── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" id="tabCVE"     onclick="switchTab('cve')">⬡ CVE Feed</button>
+    <button class="tab-btn"        id="tabAndroid" onclick="switchTab('android')">📱 Android Scanner</button>
+  </nav>
+
+  <!-- ── CVE Tab Panel ────────────────────────────────────────── -->
+  <div id="panelCVE" class="tab-panel active">
+
   <!-- ── Stats Bar ─────────────────────────────────────────────── -->
   <section class="stats-bar">
     <div class="stat-card critical">
@@ -124,8 +133,148 @@
     </div>
   </section>
 
-  <!-- ── Detail Modal ──────────────────────────────────────────── -->
-  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  </div> <!-- end #panelCVE -->
+
+  <!-- ── Android Scanner Panel ─────────────────────────────────── -->
+  <div id="panelAndroid" class="tab-panel">
+
+    <!-- Device Status Card -->
+    <section class="android-status-bar">
+      <div class="device-card" id="deviceCard">
+        <div class="device-icon">📱</div>
+        <div class="device-info">
+          <div class="device-name" id="deviceName">No device connected</div>
+          <div class="device-meta" id="deviceMeta">Connect your Android phone via USB with USB Debugging enabled</div>
+        </div>
+        <div class="device-status-pill" id="deviceStatusPill">
+          <span class="pill-dot"></span>
+          <span id="deviceStatusText">Waiting</span>
+        </div>
+        <button class="btn-detect" id="btnDetect" onclick="detectDevice()">🔍 Detect Device</button>
+        <button class="btn-scan" id="btnScan" onclick="startScan()" disabled>▶ Start Scan</button>
+      </div>
+    </section>
+
+    <!-- ADB Setup Instructions (shown when ADB not found) -->
+    <section class="adb-instructions" id="adbInstructions" style="display:none">
+      <div class="instruction-card">
+        <h3>⚙️ ADB Setup Required</h3>
+        <p>Android Debug Bridge (ADB) must be installed and in your PATH before scanning.</p>
+        <ol>
+          <li>Download <strong>Android Platform Tools</strong> from <a href="https://developer.android.com/tools/releases/platform-tools" target="_blank" rel="noopener">developer.android.com</a></li>
+          <li>Extract and add the folder to your system PATH</li>
+          <li>On your Android phone: <strong>Settings → Developer Options → USB Debugging → Enable</strong></li>
+          <li>Connect phone via USB, accept the RSA key prompt on the phone</li>
+          <li>Click <strong>Detect Device</strong> above</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Scan Progress -->
+    <section class="scan-progress" id="scanProgress" style="display:none">
+      <div class="progress-card">
+        <div class="progress-spinner"></div>
+        <div class="progress-text" id="progressText">Scanning device...</div>
+        <div class="progress-steps">
+          <div class="progress-step" id="step1">📋 Fingerprinting device</div>
+          <div class="progress-step" id="step2">📦 Reading installed packages</div>
+          <div class="progress-step" id="step3">🔍 Matching CVE database</div>
+          <div class="progress-step" id="step4">📊 Building report</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scan Results -->
+    <section class="scan-results" id="scanResults" style="display:none">
+
+      <!-- Device Report Header -->
+      <div class="report-header">
+        <div class="report-device-info">
+          <div class="report-device-name" id="reportDeviceName">—</div>
+          <div class="report-device-details" id="reportDeviceDetails">—</div>
+        </div>
+        <div class="report-scan-meta">
+          <span id="reportScanTime">—</span>
+          <span id="reportPackages">—</span>
+        </div>
+      </div>
+
+      <!-- Severity Summary -->
+      <div class="report-severity-bar">
+        <div class="report-sev-card critical">
+          <div class="report-sev-label">CRITICAL</div>
+          <div class="report-sev-value" id="rCritical">0</div>
+        </div>
+        <div class="report-sev-card high">
+          <div class="report-sev-label">HIGH</div>
+          <div class="report-sev-value" id="rHigh">0</div>
+        </div>
+        <div class="report-sev-card medium">
+          <div class="report-sev-label">MEDIUM</div>
+          <div class="report-sev-value" id="rMedium">0</div>
+        </div>
+        <div class="report-sev-card low">
+          <div class="report-sev-label">LOW</div>
+          <div class="report-sev-value" id="rLow">0</div>
+        </div>
+        <div class="report-sev-card total">
+          <div class="report-sev-label">TOTAL</div>
+          <div class="report-sev-value" id="rTotal">0</div>
+        </div>
+      </div>
+
+      <!-- Vulnerability Filter -->
+      <div class="report-controls">
+        <div class="filter-group">
+          <label>Filter</label>
+          <select id="reportSeverityFilter" onchange="filterReport()">
+            <option value="ALL">All</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+            <option value="os">Android OS</option>
+            <option value="kernel">Kernel</option>
+            <option value="manufacturer">Manufacturer</option>
+            <option value="package">Installed Apps</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Category</label>
+          <span class="category-pills" id="categoryPills"></span>
+        </div>
+      </div>
+
+      <!-- Vulnerability Table -->
+      <div class="table-wrapper">
+        <table id="reportTable">
+          <thead>
+            <tr>
+              <th>CVE ID</th>
+              <th>Severity</th>
+              <th>CVSS</th>
+              <th>Category</th>
+              <th>Summary</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Scan History -->
+    <section class="scan-history" id="scanHistory" style="display:none">
+      <div class="scan-history-header">
+        <h3>📂 Previous Scans</h3>
+      </div>
+      <div id="scanHistoryList"></div>
+    </section>
+
+  </div> <!-- end #panelAndroid -->
+
+  <!-- ── Detail Modal ──────────────────────────────────────────── -->  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeModal()">✕</button>
 
