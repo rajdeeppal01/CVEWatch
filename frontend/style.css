@@ -331,7 +331,7 @@ tbody td {
 .badge-HIGH     { background: var(--high-dim);     color: var(--high);     border: 1px solid var(--high); }
 .badge-MEDIUM   { background: var(--medium-dim);   color: var(--medium);   border: 1px solid var(--medium); }
 .badge-LOW      { background: var(--low-dim);      color: var(--low);      border: 1px solid var(--low); }
-.badge-UNKNOWN  { background: #ffffff10;           color: var(--text-dim); border: 1px solid var(--border-light); }
+.badge-UNKNOWN  { background: #ffffff08; color: var(--text-muted); border: 1px solid var(--border); font-style: italic; }
 
 /* CVSS score */
 .cvss-score {
@@ -525,5 +525,4 @@ tbody td {
 }
 
 /* ── Utility ────────────────────────────────────────────────────── */
-.spinning { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { opacity: 0.7; }
