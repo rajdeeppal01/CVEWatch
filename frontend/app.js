@@ -151,11 +151,13 @@ function renderTable(cves) {
     const summary    = truncate(cve.description, 90);
     const patchIcon  = cve.patch_available ? `<span class="patch-yes" title="Patch available">✓</span>`
                                            : `<span class="patch-no"  title="No patch">—</span>`;
+    const severity   = cve.severity || "UNKNOWN";
+    const badgeLabel = severity === "UNKNOWN" ? "PENDING" : severity;
 
     return `
       <tr onclick="openModal('${escHtml(cve.cve_id)}')">
         <td class="cve-id-cell">${escHtml(cve.cve_id)}</td>
-        <td><span class="badge badge-${cve.severity || 'UNKNOWN'}">${cve.severity || 'N/A'}</span></td>
+        <td><span class="badge badge-${severity}">${badgeLabel}</span></td>
         <td class="cvss-score ${scoreClass}">${cve.cvss_score ?? '—'}</td>
         <td class="vendor-cell">${escHtml(vendor)}</td>
         <td class="date-cell">${dateShort}</td>
