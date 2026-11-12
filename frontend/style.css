@@ -526,3 +526,323 @@ tbody td {
 
 /* ── Utility ────────────────────────────────────────────────────── */
 .spinning { opacity: 0.7; }
+
+/* ── Tab Navigation ─────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  gap: 4px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Tab Panels ─────────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Android Status Bar ──────────────────────────────────────────── */
+.android-status-bar {
+  padding: 20px 28px 0;
+}
+
+.device-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow);
+}
+
+.device-icon { font-size: 32px; line-height: 1; }
+
+.device-info { flex: 1; min-width: 200px; }
+.device-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.device-meta { font-size: 12px; color: var(--text-muted); }
+
+.device-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.device-status-pill.connected { color: var(--low); border-color: var(--low); background: var(--low-dim); }
+.device-status-pill.scanning  { color: var(--medium); border-color: var(--medium); background: var(--medium-dim); }
+.device-status-pill.done      { color: var(--accent); border-color: var(--accent); background: var(--info-dim); }
+.device-status-pill.error     { color: var(--critical); border-color: var(--critical); background: var(--critical-dim); }
+
+.pill-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.device-status-pill.connected .pill-dot { animation: pulse 1.8s ease-in-out infinite; }
+
+.btn-detect, .btn-scan {
+  padding: 9px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-detect {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+}
+.btn-detect:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-scan {
+  background: var(--low-dim);
+  border: 1px solid var(--low);
+  color: var(--low);
+}
+.btn-scan:hover:not(:disabled) { background: var(--low); color: var(--bg); }
+.btn-scan:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── ADB Instructions ────────────────────────────────────────────── */
+.adb-instructions { padding: 20px 28px; }
+
+.instruction-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--medium);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+
+.instruction-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--medium);
+  margin-bottom: 10px;
+}
+
+.instruction-card p {
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.instruction-card ol {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.instruction-card a { color: var(--accent); }
+
+/* ── Scan Progress ───────────────────────────────────────────────── */
+.scan-progress { padding: 20px 28px; }
+
+.progress-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.progress-spinner {
+  width: 48px; height: 48px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.progress-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 260px;
+}
+
+.progress-step {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+.progress-step.active  { color: var(--accent); font-weight: 600; }
+.progress-step.done    { color: var(--low); }
+
+/* ── Scan Results ────────────────────────────────────────────────── */
+.scan-results { padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+.report-header {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.report-device-name { font-size: 18px; font-weight: 700; color: var(--text); }
+.report-device-details { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.report-scan-meta { font-size: 12px; color: var(--text-muted); text-align: right; display: flex; flex-direction: column; gap: 4px; }
+
+.report-severity-bar {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.report-sev-card {
+  flex: 1;
+  padding: 16px;
+  text-align: center;
+  background: var(--bg-card);
+}
+
+.report-sev-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.report-sev-value { font-size: 26px; font-weight: 800; }
+.report-sev-card.critical .report-sev-value { color: var(--critical); }
+.report-sev-card.high     .report-sev-value { color: var(--high); }
+.report-sev-card.medium   .report-sev-value { color: var(--medium); }
+.report-sev-card.low      .report-sev-value { color: var(--low); }
+.report-sev-card.total    .report-sev-value { color: var(--accent); }
+
+.report-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.category-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.cat-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-light);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cat-pill:hover, .cat-pill.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+.match-category {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.match-os           { background: #4cc9f020; color: var(--accent); border: 1px solid var(--accent); }
+.match-kernel       { background: #a78bfa20; color: #a78bfa;       border: 1px solid #a78bfa; }
+.match-manufacturer { background: var(--high-dim); color: var(--high); border: 1px solid var(--high); }
+.match-package      { background: var(--low-dim);  color: var(--low);  border: 1px solid var(--low); }
+
+/* ── Scan History ────────────────────────────────────────────────── */
+.scan-history { padding: 0 28px 28px; }
+
+.scan-history-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.scan-history-header h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.history-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.history-device { font-weight: 600; color: var(--text); flex: 1; min-width: 160px; }
+.history-android { font-size: 12px; color: var(--text-muted); }
+.history-patch   { font-size: 12px; color: var(--text-muted); }
+.history-time    { font-size: 11px; color: var(--text-muted); }
+
+.history-vulns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.history-vuln-pill {
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.hv-critical { background: var(--critical-dim); color: var(--critical); }
+.hv-high     { background: var(--high-dim);     color: var(--high); }
