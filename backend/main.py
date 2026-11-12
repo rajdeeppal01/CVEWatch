@@ -2,11 +2,14 @@
 main.py — FastAPI application for CVEWatch.
 
 Endpoints:
-  GET  /api/cves          — paginated CVE list with filters
-  GET  /api/cves/{cve_id} — full detail for one CVE
-  GET  /api/stats         — dashboard header stats
-  POST /api/refresh       — trigger manual CVE fetch
-  GET  /api/stream        — SSE stream for live updates
+  GET  /api/cves              — paginated CVE list with filters
+  GET  /api/cves/{cve_id}     — full detail for one CVE
+  GET  /api/stats             — dashboard header stats
+  POST /api/refresh           — trigger manual CVE fetch
+  GET  /api/stream            — SSE stream for live updates
+  GET  /api/android/status    — check ADB availability + connected devices
+  POST /api/android/scan      — run full Android vulnerability scan
+  GET  /api/android/history   — past scan summaries
 """
 
 import asyncio
@@ -27,6 +30,9 @@ from fastapi.staticfiles import StaticFiles
 
 from database import DB_PATH, init_db, get_cves, get_cve_detail, get_stats
 from fetcher import run_fetch, INITIAL_DAYS_BACK
+from android_scanner import (
+    check_adb_available, list_devices, run_scan, get_scan_history
+)
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -183,3 +189,57 @@ async def sse_stream():
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# ── Android Scanner Routes ───────────────────────────────────────────────────
+
+@app.get("/api/android/status")
+async def android_status():
+    """
+    Check ADB availability and list connected devices.
+    Call this when the user opens the Android tab to show device state.
+    """
+    adb = await check_adb_available()
+    if not adb["available"]:
+        return {"adb_available": False, "error": adb["error"], "devices": []}
+
+    devices = await list_devices()
+    return {
+        "adb_available": True,
+        "adb_version": adb.get("version", ""),
+        "devices": devices,
+        "online_count": sum(1 for d in devices if d["state"] == "device"),
+    }
+
+
+@app.post("/api/android/scan")
+async def android_scan(serial: str = Query(default=None, description="Device serial (optional if only one connected)")):
+    """
+    Run a full Android vulnerability scan on the connected device.
+    - Fingerprints the device via ADB
+    - Lists installed packages
+    - Matches against the CVE database
+    - Returns full vulnerability report
+    """
+    logger.info(f"Android scan requested for serial={serial}")
+    report = await run_scan(serial=serial)
+
+    if report["status"] == "ok":
+        # Broadcast scan completion to all SSE clients
+        await _broadcast({
+            "type": "android_scan_complete",
+            "data": {
+                "device": f"{report['device'].get('manufacturer', '')} {report['device'].get('model', '')}".strip(),
+                "total_vulns": report["total_vulnerabilities"],
+                "critical": report["severity_summary"].get("CRITICAL", 0),
+            }
+        })
+
+    return report
+
+
+@app.get("/api/android/history")
+async def android_history():
+    """Return past Android scan summaries."""
+    history = await get_scan_history()
+    return {"scans": history}
